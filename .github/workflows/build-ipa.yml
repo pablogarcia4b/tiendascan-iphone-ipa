@@ -1,0 +1,46 @@
+name: Compilar TiendaScan IPA para iPhone
+
+on:
+  push:
+    branches: [ "*" ]
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-latest
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Generar proyecto Xcode (XcodeGen)
+        working-directory: ios-ipa
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Compilar aplicacion iOS (arm64)
+        working-directory: ios-ipa
+        run: |
+          xcodebuild -project TiendaScan.xcodeproj \
+            -scheme TiendaScan \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+
+      - name: Empaquetar archivo TiendaScan.ipa
+        working-directory: ios-ipa
+        run: |
+          mkdir -p Payload
+          cp -r build/Build/Products/Release-iphoneos/TiendaScan.app Payload/
+          zip -r9 TiendaScan.ipa Payload
+
+      - name: Subir TiendaScan.ipa listo para descargar
+        uses: actions/upload-artifact@v4
+        with:
+          name: TiendaScan-iPhone-IPA
+          path: ios-ipa/TiendaScan.ipa
+          if-no-files-found: error
